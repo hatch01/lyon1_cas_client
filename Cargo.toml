@@ -1,0 +1,11 @@
+[package]
+name = "lyon1_cas_client"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+reqwest = { version = "0.12.9", features = ["cookies", "blocking"] }
+soup = "0.5.1"
+
+[dev-dependencies]
+rust_dotenv = "0.1.2"
