@@ -1,5 +1,5 @@
-use soup::{NodeExt, QueryBuilderExt};
 use reqwest::blocking::Client;
+use soup::{NodeExt, QueryBuilderExt};
 
 const CAS_LOGIN_URL: &str = "https://cas.univ-lyon1.fr/cas/login";
 //const cas_logout: &str = "https://cas.univ-lyon1.fr/cas/logout";
@@ -7,51 +7,39 @@ const USER_AGENT: &str =
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.3";
 
 struct Lyon1CasClient {
-    authenticated: bool,
     reqwest_client: Client,
 }
 
-struct Credentials {
-    username: String,
-    password: String,
-    tgc_token: Option<String>,
-}
-
-impl Credentials {
-    pub fn new(username: String, password: String) -> Credentials {
-        Self {
-            username,
-            password,
-            tgc_token: None,
-        }
-    }
+enum Credentials {
+    Unauthenticated { username: String, password: String },
+    Authenticated { username: String, password: String, token: String },
 }
 
 impl Lyon1CasClient {
-    pub fn new() -> Self { Self { authenticated: false, reqwest_client: reqwest::blocking::Client::builder().user_agent(USER_AGENT).build().unwrap() } }
+    pub fn new() -> Self { Self { reqwest_client: reqwest::blocking::Client::builder().user_agent(USER_AGENT).build().unwrap() } }
 
-    pub fn authenticated(&self) -> bool { self.authenticated }
+    pub fn authenticate_user(&self, credentials: Credentials) -> Option<Credentials> {
+        if let Credentials::Unauthenticated { username, password } = credentials {
+            let response = self.reqwest_client.post(CAS_LOGIN_URL).form(
+                &[
+                    ("username", username.as_str()),
+                    ("password", password.as_str()),
+                    ("execution", self.get_exec_token().unwrap().as_str()),
+                    ("_eventId", "submit"),
+                ]
+            ).send().unwrap();
 
-    pub fn authenticate_user(&self, credentials: &mut Credentials) -> bool {
-        let response = self.reqwest_client.post(CAS_LOGIN_URL).form(
-            &[
-                ("username", credentials.username.as_str()),
-                ("password", credentials.password.as_str()),
-                ("execution", self.get_exec_token().unwrap().as_str()),
-                ("_eventId", "submit"),
-            ]
-        ).send().unwrap();
+            if !response.status().is_success() {
+                println!("Failed to login to CAS (Status: {})", response.status());
 
-        if !response.status().is_success() {
-            println!("{}", response.status());
-            println!("{}", response.text().unwrap());
+                return None;
+            }
 
-            return false;
+            let token = response.cookies().filter(|cookie| cookie.name() == "TGC-CAS").next().unwrap().value().to_owned();
+            Some(Credentials::Authenticated { username, password, token })
+        } else {
+            Some(credentials)
         }
-
-        let token = response.cookies().filter(|cookie| cookie.name() == "TGC-CAS").next().unwrap().value().to_owned();
-        credentials.tgc_token = Some(token);
-        true
     }
 
     pub(crate) fn get_exec_token(&self) -> Result<String, reqwest::Error> {
@@ -66,8 +54,8 @@ impl Lyon1CasClient {
 
 #[cfg(test)]
 mod tests {
-    use rust_dotenv::dotenv::DotEnv;
     use super::*;
+    use rust_dotenv::dotenv::DotEnv;
 
     #[test]
     fn exec_token() {
@@ -80,14 +68,18 @@ mod tests {
     #[test]
     fn authenticate_user() {
         let dotenv = DotEnv::new("");
-        
-        let mut credentials = Credentials::new(dotenv.get_var("USERNAME".to_string()).unwrap(), dotenv.get_var("PASSWORD".to_string()).unwrap());
-        let success = Lyon1CasClient::new().authenticate_user(&mut credentials);
-        println!("success: {:?}", success);
-        assert!(success);
 
-        if success {
-            println!("token: {}", credentials.tgc_token.unwrap());
+        let mut credentials = Credentials::Unauthenticated {
+            username: dotenv.get_var("USERNAME".to_string()).unwrap(),
+            password: dotenv.get_var("PASSWORD".to_string()).unwrap(),
+        };
+
+        let credentials_opt = Lyon1CasClient::new().authenticate_user(credentials);
+        assert!(credentials_opt.is_some());
+
+        if let Some(Credentials::Authenticated { username, password, token }) = credentials_opt {
+            println!("Username: {}", username);
+            println!("Token: {}", token);
         }
     }
 }
