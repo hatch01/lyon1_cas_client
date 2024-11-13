@@ -4,7 +4,7 @@ use reqwest::blocking::Client;
 use soup::{NodeExt, QueryBuilderExt};
 
 const CAS_LOGIN_URL: &str = "https://cas.univ-lyon1.fr/cas/login";
-//const cas_logout: &str = "https://cas.univ-lyon1.fr/cas/logout";
+const CAS_LOGOUT_URL: &str = "https://cas.univ-lyon1.fr/cas/logout";
 const USER_AGENT: &str =
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.3";
 
@@ -51,7 +51,7 @@ impl Lyon1CasClient {
 
     pub fn logout(&mut self) -> Result<bool, reqwest::Error> {
         self.authenticated = false;
-        self.reqwest_client.get(CAS_LOGIN_URL).send().map(|response| response.status().is_success())
+        self.reqwest_client.get(CAS_LOGOUT_URL).send().map(|response| response.status().is_success())
     }
 
     fn get_exec_token(&self) -> Result<String, reqwest::Error> {
@@ -72,7 +72,7 @@ mod tests {
     #[test]
     fn exec_token() {
         let token = Lyon1CasClient::new().get_exec_token().unwrap();
-        println!("{}", token);
+        println!("Exec Token: {}", token);
 
         assert!(token.len() > 0);
     }
