@@ -1,8 +1,8 @@
 extern crate core;
 
+use reqwest;
 use reqwest::blocking::Client;
 use soup::{NodeExt, QueryBuilderExt};
-use reqwest;
 
 pub use crate::reqwest::Error;
 
@@ -16,28 +16,17 @@ pub struct Lyon1CasClient {
     authenticated: bool,
 }
 
-pub struct Credentials {
-    username: String,
-    password: String,
-}
-
-impl Credentials {
-    pub fn new(username: String, password: String) -> Credentials {
-        Self { username, password }
-    }
-}
-
 impl Lyon1CasClient {
     pub fn new() -> Self { Self { reqwest_client: Client::builder().user_agent(USER_AGENT).cookie_store(true).build().unwrap(), authenticated: false } }
 
     pub fn authenticated(&self) -> bool { self.authenticated }
 
-    pub fn authenticate_user(&mut self, credentials: Credentials) -> Result<bool, Error> {
+    pub fn authenticate_user(&mut self, username: &str, password: &str) -> Result<bool, Error> {
         let response = self.reqwest_client.post(CAS_LOGIN_URL).form(
             &[
-                ("username", credentials.username.as_str()),
-                ("password", credentials.password.as_str()),
-                ("execution", self.get_exec_token().unwrap().as_str()),
+                ("username", username),
+                ("password", password),
+                ("execution", &self.get_exec_token().unwrap()),
                 ("_eventId", "submit"),
             ]
         ).send()?;
@@ -67,7 +56,7 @@ impl Lyon1CasClient {
             .map(|response| response.text())?
     }
 
-    fn get_exec_token(&self) -> Result<String, reqwest::Error> {
+    fn get_exec_token(&self) -> Result<String, Error> {
         let response = self.reqwest_client.get(CAS_LOGIN_URL).send()?;
 
         let soup = soup::Soup::new(&response.text()?);
@@ -93,21 +82,21 @@ mod tests {
     #[test]
     fn authenticate_user() {
         let dotenv = DotEnv::new("");
-        let credentials = Credentials::new(dotenv.get_var("USERNAME".to_string()).unwrap(), dotenv.get_var("PASSWORD".to_string()).unwrap());
+        let (username, password) = (dotenv.get_var("USERNAME".to_string()).unwrap(), dotenv.get_var("PASSWORD".to_string()).unwrap());
 
         let mut cas_client = Lyon1CasClient::new();
-        assert!(cas_client.authenticate_user(credentials).unwrap());
+        assert!(cas_client.authenticate_user(&username, &password).unwrap());
     }
 
     #[test]
     fn logout() {
         let dotenv = DotEnv::new("");
-        let credentials = Credentials::new(dotenv.get_var("USERNAME".to_string()).unwrap(), dotenv.get_var("PASSWORD".to_string()).unwrap());
+        let (username, password) = (dotenv.get_var("USERNAME".to_string()).unwrap(), dotenv.get_var("PASSWORD".to_string()).unwrap());
 
         let mut cas_client = Lyon1CasClient::new();
         assert!(!cas_client.authenticated());
 
-        assert!(cas_client.authenticate_user(credentials).unwrap());
+        assert!(cas_client.authenticate_user(&username, &password).unwrap());
         assert!(cas_client.authenticated());
 
         assert!(cas_client.logout().unwrap());
@@ -116,10 +105,10 @@ mod tests {
     #[test]
     fn service_request() {
         let dotenv = DotEnv::new("");
-        let credentials = Credentials::new(dotenv.get_var("USERNAME".to_string()).unwrap(), dotenv.get_var("PASSWORD".to_string()).unwrap());
+        let (username, password) = (dotenv.get_var("USERNAME".to_string()).unwrap(), dotenv.get_var("PASSWORD".to_string()).unwrap());
         let mut cas_client = Lyon1CasClient::new();
 
-        assert!(cas_client.authenticate_user(credentials).unwrap());
+        assert!(cas_client.authenticate_user(&username, &password).unwrap());
 
         println!("{}", cas_client.service_request("https://tomuss.univ-lyon1.fr", true).unwrap());
     }
