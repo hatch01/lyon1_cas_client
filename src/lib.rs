@@ -16,7 +16,7 @@ enum Credentials {
 }
 
 impl Lyon1CasClient {
-    pub fn new() -> Self { Self { reqwest_client: reqwest::blocking::Client::builder().user_agent(USER_AGENT).cookie_store(true).build().unwrap() } }
+    pub fn new() -> Self { Self { reqwest_client: Client::builder().user_agent(USER_AGENT).cookie_store(true).build().unwrap() } }
 
     pub fn authenticate_user(&self, credentials: Credentials) -> Option<Credentials> {
         if let Credentials::Unauthenticated { username, password } = credentials {
