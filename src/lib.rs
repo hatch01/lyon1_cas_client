@@ -2,6 +2,9 @@ extern crate core;
 
 use reqwest::blocking::Client;
 use soup::{NodeExt, QueryBuilderExt};
+use reqwest;
+
+pub use crate::reqwest::Error;
 
 const CAS_LOGIN_URL: &str = "https://cas.univ-lyon1.fr/cas/login";
 const CAS_LOGOUT_URL: &str = "https://cas.univ-lyon1.fr/cas/logout";
@@ -29,7 +32,7 @@ impl Lyon1CasClient {
 
     pub fn authenticated(&self) -> bool { self.authenticated }
 
-    pub fn authenticate_user(&mut self, credentials: Credentials) -> Result<bool, reqwest::Error> {
+    pub fn authenticate_user(&mut self, credentials: Credentials) -> Result<bool, Error> {
         let response = self.reqwest_client.post(CAS_LOGIN_URL).form(
             &[
                 ("username", credentials.username.as_str()),
@@ -49,12 +52,12 @@ impl Lyon1CasClient {
         Ok(true)
     }
 
-    pub fn logout(&mut self) -> Result<bool, reqwest::Error> {
+    pub fn logout(&mut self) -> Result<bool, Error> {
         self.authenticated = false;
         self.reqwest_client.get(CAS_LOGOUT_URL).send().map(|response| response.status().is_success())
     }
 
-    pub fn service_request(&self, service: impl Into<String>, unsafe_req: bool) -> Result<String, reqwest::Error> {
+    pub fn service_request(&self, service: impl Into<String>, unsafe_req: bool) -> Result<String, Error> {
         let mut service = service.into();
         if unsafe_req { service += "/unsafe=1" }
 
