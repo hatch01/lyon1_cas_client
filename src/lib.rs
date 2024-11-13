@@ -16,7 +16,7 @@ enum Credentials {
 }
 
 impl Lyon1CasClient {
-    pub fn new() -> Self { Self { reqwest_client: reqwest::blocking::Client::builder().user_agent(USER_AGENT).build().unwrap() } }
+    pub fn new() -> Self { Self { reqwest_client: reqwest::blocking::Client::builder().user_agent(USER_AGENT).cookie_store(true).build().unwrap() } }
 
     pub fn authenticate_user(&self, credentials: Credentials) -> Option<Credentials> {
         if let Credentials::Unauthenticated { username, password } = credentials {
@@ -40,6 +40,10 @@ impl Lyon1CasClient {
         } else {
             Some(credentials)
         }
+    }
+    
+    pub fn logout(&self) -> Result<(), reqwest::Error>{
+        self.reqwest_client.get(CAS_LOGIN_URL).send().map(|_| ())
     }
 
     pub(crate) fn get_exec_token(&self) -> Result<String, reqwest::Error> {
