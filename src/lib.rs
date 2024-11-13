@@ -54,6 +54,17 @@ impl Lyon1CasClient {
         self.reqwest_client.get(CAS_LOGOUT_URL).send().map(|response| response.status().is_success())
     }
 
+    pub fn service_request(&self, service: impl Into<String>, unsafe_req: bool, mut query_parameters: Vec<(String, String)>) -> Result<String, reqwest::Error> {
+        let mut service = service.into();
+        if unsafe_req { service += "/unsafe=1" }
+        query_parameters.push(("service".to_owned(), service.into()));
+
+        self.reqwest_client.get(CAS_LOGIN_URL)
+            .query(&query_parameters)
+            .send()
+            .map(|response| response.text())?
+    }
+
     fn get_exec_token(&self) -> Result<String, reqwest::Error> {
         let response = self.reqwest_client.get(CAS_LOGIN_URL).send()?;
 
@@ -93,10 +104,21 @@ mod tests {
 
         let mut cas_client = Lyon1CasClient::new();
         assert!(!cas_client.authenticated());
-        
+
         assert!(cas_client.authenticate_user(credentials).unwrap());
         assert!(cas_client.authenticated());
-         
+
         assert!(cas_client.logout().unwrap());
+    }
+
+    #[test]
+    fn service_request() {
+        let dotenv = DotEnv::new("");
+        let credentials = Credentials::new(dotenv.get_var("USERNAME".to_string()).unwrap(), dotenv.get_var("PASSWORD".to_string()).unwrap());
+        let mut cas_client = Lyon1CasClient::new();
+
+        assert!(cas_client.authenticate_user(credentials).unwrap());
+
+        println!("{}", cas_client.service_request("https://tomuss.univ-lyon1.fr", true, vec![]).unwrap());
     }
 }
