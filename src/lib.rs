@@ -54,13 +54,12 @@ impl Lyon1CasClient {
         self.reqwest_client.get(CAS_LOGOUT_URL).send().map(|response| response.status().is_success())
     }
 
-    pub fn service_request(&self, service: impl Into<String>, unsafe_req: bool, mut query_parameters: Vec<(String, String)>) -> Result<String, reqwest::Error> {
+    pub fn service_request(&self, service: impl Into<String>, unsafe_req: bool) -> Result<String, reqwest::Error> {
         let mut service = service.into();
         if unsafe_req { service += "/unsafe=1" }
-        query_parameters.push(("service".to_owned(), service.into()));
 
         self.reqwest_client.get(CAS_LOGIN_URL)
-            .query(&query_parameters)
+            .query::<[(String, String); 1]>(&[("service".to_owned(), service.into())])
             .send()
             .map(|response| response.text())?
     }
@@ -119,6 +118,6 @@ mod tests {
 
         assert!(cas_client.authenticate_user(credentials).unwrap());
 
-        println!("{}", cas_client.service_request("https://tomuss.univ-lyon1.fr", true, vec![]).unwrap());
+        println!("{}", cas_client.service_request("https://tomuss.univ-lyon1.fr", true).unwrap());
     }
 }
