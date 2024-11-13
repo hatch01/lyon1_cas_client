@@ -19,7 +19,7 @@ pub struct Credentials {
 }
 
 impl Credentials {
-    fn new(username: String, password: String) -> Credentials {
+    pub fn new(username: String, password: String) -> Credentials {
         Self { username, password }
     }
 }
