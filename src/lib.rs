@@ -8,12 +8,12 @@ const CAS_LOGIN_URL: &str = "https://cas.univ-lyon1.fr/cas/login";
 const USER_AGENT: &str =
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.3";
 
-struct Lyon1CasClient {
+pub struct Lyon1CasClient {
     reqwest_client: Client,
     authenticated: bool,
 }
 
-struct Credentials {
+pub struct Credentials {
     username: String,
     password: String,
 }
