@@ -17,19 +17,32 @@ pub struct Lyon1CasClient {
 }
 
 impl Lyon1CasClient {
-    pub fn new() -> Self { Self { reqwest_client: Client::builder().user_agent(USER_AGENT).cookie_store(true).build().unwrap(), authenticated: false } }
+    pub fn new() -> Self {
+        Self {
+            reqwest_client: Client::builder()
+                .user_agent(USER_AGENT)
+                .cookie_store(true)
+                .build()
+                .unwrap(),
+            authenticated: false,
+        }
+    }
 
-    pub fn authenticated(&self) -> bool { self.authenticated }
+    pub fn authenticated(&self) -> bool {
+        self.authenticated
+    }
 
     pub fn authenticate_user(&mut self, username: &str, password: &str) -> Result<bool, Error> {
-        let response = self.reqwest_client.post(CAS_LOGIN_URL).form(
-            &[
+        let response = self
+            .reqwest_client
+            .post(CAS_LOGIN_URL)
+            .form(&[
                 ("username", username),
                 ("password", password),
                 ("execution", &self.get_exec_token().unwrap()),
                 ("_eventId", "submit"),
-            ]
-        ).send()?;
+            ])
+            .send()?;
 
         if !response.status().is_success() {
             println!("Failed to login to CAS (Status: {})", response.status());
@@ -43,14 +56,24 @@ impl Lyon1CasClient {
 
     pub fn logout(&mut self) -> Result<bool, Error> {
         self.authenticated = false;
-        self.reqwest_client.get(CAS_LOGOUT_URL).send().map(|response| response.status().is_success())
+        self.reqwest_client
+            .get(CAS_LOGOUT_URL)
+            .send()
+            .map(|response| response.status().is_success())
     }
 
-    pub fn service_request(&self, service: impl Into<String>, unsafe_req: bool) -> Result<String, Error> {
+    pub fn service_request(
+        &self,
+        service: impl Into<String>,
+        unsafe_req: bool,
+    ) -> Result<String, Error> {
         let mut service = service.into();
-        if unsafe_req { service += "/unsafe=1" }
+        if unsafe_req {
+            service += "/unsafe=1"
+        }
 
-        self.reqwest_client.get(CAS_LOGIN_URL)
+        self.reqwest_client
+            .get(CAS_LOGIN_URL)
             .query::<[(String, String); 1]>(&[("service".to_owned(), service.into())])
             .send()
             .map(|response| response.text())?
@@ -60,7 +83,12 @@ impl Lyon1CasClient {
         let response = self.reqwest_client.get(CAS_LOGIN_URL).send()?;
 
         let soup = soup::Soup::new(&response.text()?);
-        let token = soup.attr("name", "execution").find().unwrap().get("value").unwrap();
+        let token = soup
+            .attr("name", "execution")
+            .find()
+            .unwrap()
+            .get("value")
+            .unwrap();
 
         Ok(token)
     }
@@ -69,7 +97,7 @@ impl Lyon1CasClient {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rust_dotenv::dotenv::DotEnv;
+    use std::env;
 
     #[test]
     fn exec_token() {
@@ -81,8 +109,11 @@ mod tests {
 
     #[test]
     fn authenticate_user() {
-        let dotenv = DotEnv::new("");
-        let (username, password) = (dotenv.get_var("USERNAME".to_string()).unwrap(), dotenv.get_var("PASSWORD".to_string()).unwrap());
+        let _ = dotenvy::dotenv();
+        let (username, password) = (
+            env::var("USERNAME".to_string()).unwrap(),
+            env::var("PASSWORD".to_string()).unwrap(),
+        );
 
         let mut cas_client = Lyon1CasClient::new();
         assert!(cas_client.authenticate_user(&username, &password).unwrap());
@@ -90,8 +121,11 @@ mod tests {
 
     #[test]
     fn logout() {
-        let dotenv = DotEnv::new("");
-        let (username, password) = (dotenv.get_var("USERNAME".to_string()).unwrap(), dotenv.get_var("PASSWORD".to_string()).unwrap());
+        let _ = dotenvy::dotenv();
+        let (username, password) = (
+            env::var("USERNAME".to_string()).unwrap(),
+            env::var("PASSWORD".to_string()).unwrap(),
+        );
 
         let mut cas_client = Lyon1CasClient::new();
         assert!(!cas_client.authenticated());
@@ -104,12 +138,21 @@ mod tests {
 
     #[test]
     fn service_request() {
-        let dotenv = DotEnv::new("");
-        let (username, password) = (dotenv.get_var("USERNAME".to_string()).unwrap(), dotenv.get_var("PASSWORD".to_string()).unwrap());
+        let _ = dotenvy::dotenv();
+        let (username, password) = (
+            env::var("USERNAME".to_string()).unwrap(),
+            env::var("PASSWORD".to_string()).unwrap(),
+        );
+
         let mut cas_client = Lyon1CasClient::new();
 
         assert!(cas_client.authenticate_user(&username, &password).unwrap());
 
-        println!("{}", cas_client.service_request("https://tomuss.univ-lyon1.fr", true).unwrap());
+        println!(
+            "{}",
+            cas_client
+                .service_request("https://tomuss.univ-lyon1.fr", true)
+                .unwrap()
+        );
     }
 }
