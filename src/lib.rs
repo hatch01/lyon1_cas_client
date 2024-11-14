@@ -39,7 +39,7 @@ impl Lyon1CasClient {
             .form(&[
                 ("username", username),
                 ("password", password),
-                ("execution", &self.get_exec_token().unwrap()),
+                ("execution", &self.get_exec_token()?),
                 ("_eventId", "submit"),
             ])
             .send()?;
