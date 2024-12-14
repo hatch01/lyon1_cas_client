@@ -3,9 +3,16 @@ name = "lyon1_cas_client"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+crate-type = ["cdylib", "staticlib"]
+
 [dependencies]
 reqwest = { version = "0.12.9", default-features = false, features = ["cookies", "blocking", "http2", "charset", "rustls-tls"] }
 soup = "0.5.1"
+flutter_rust_bridge = "=2.7.0"
+
+[build-dependencies]
+flutter_rust_bridge_codegen = "=2.7.0"
 
 [dev-dependencies]
 dotenvy = "0.15.7"
