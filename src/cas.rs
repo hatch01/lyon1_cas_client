@@ -73,17 +73,25 @@ impl Lyon1CasClient {
         &self,
         service: String,
         unsafe_req: bool,
+        wrap: bool,
     ) -> Result<String, Error> {
         let mut service = service.into();
         if unsafe_req {
             service += "/unsafe=1"
         }
 
+        if wrap {
         self.reqwest_client
             .get(CAS_LOGIN_URL)
-            .query::<[(String, String); 1]>(&[("service".to_owned(), service.into())])
+            .query::<[(String, String); 1]>(&[("service".to_owned(), service)])
             .send()
             .map(|response| response.text())?
+        } else {
+        self.reqwest_client
+            .get(&service)
+            .send()
+            .map(|response| response.text())?
+        }
     }
 
     fn get_exec_token(&self) -> Result<String, Error> {
